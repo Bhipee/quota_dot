@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- launchd (macOS, needed for the heatmap page: it reads ~/.cc-switch on this Mac).
+     Replace /PATH/TO/quota_dot and the python path, then:
+       cp deploy/tech.mindreset.quota-dot.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/tech.mindreset.quota-dot.plist
+     Logs: /tmp/quota-dot.log -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>tech.mindreset.quota-dot</string>
+  <key>WorkingDirectory</key><string>/PATH/TO/quota_dot</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>-m</string><string>quotadot</string><string>run</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/quota-dot.log</string>
+  <key>StandardErrorPath</key><string>/tmp/quota-dot.log</string>
+</dict>
+</plist>

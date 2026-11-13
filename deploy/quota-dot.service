@@ -1,0 +1,16 @@
+# systemd (Linux server): copy to /etc/systemd/system/, then
+#   systemctl daemon-reload && systemctl enable --now quota-dot
+[Unit]
+Description=quota-dot: push usage pages to Dot. Quote/0
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=quotadot
+WorkingDirectory=/opt/quota-dot
+ExecStart=/opt/quota-dot/venv/bin/python -m quotadot run
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

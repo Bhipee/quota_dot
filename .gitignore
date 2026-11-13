@@ -1,0 +1,26 @@
+# Secrets: Dot. API key, relay keys. Commit .env.example instead.
+.env
+.env.*
+!.env.example
+*.swp
+
+# Codex OAuth tokens mounted into the container (docker-compose: ./data/codex)
+data/
+auth.json
+*.tmp
+
+# Rendered pages and design drafts (they show real usage numbers)
+out/
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

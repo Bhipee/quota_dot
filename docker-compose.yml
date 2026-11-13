@@ -1,0 +1,12 @@
+services:
+  quota-dot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CODEX_AUTH_PATH: /data/codex/auth.json
+    volumes:
+      # Must be writable: refreshed Codex tokens are saved back here.
+      - ./data/codex:/data/codex
+      # Optional: cc-switch database for the heatmap page (only if cc-switch runs on this host).
+      # - ~/.cc-switch:/data/cc-switch:ro
