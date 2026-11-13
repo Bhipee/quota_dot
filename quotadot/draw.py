@@ -13,7 +13,19 @@ W, H = 296, 152          # Quote/0 screen, black and white only
 PAD = 8
 FOOT = H - 15            # top of the inverted footer strip
 
-_MPL = "/PATH/TO/site-packages/matplotlib/mpl-data/fonts/ttf"
+def _matplotlib_fonts() -> str:
+    """DejaVu ships with matplotlib; use it on machines without system DejaVu (e.g. macOS)."""
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec("matplotlib")
+        if spec and spec.origin:
+            return str(Path(spec.origin).parent / "mpl-data" / "fonts" / "ttf")
+    except Exception:
+        pass
+    return "/nonexistent"
+
+
+_MPL = _matplotlib_fonts()
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans.ttf",

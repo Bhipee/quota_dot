@@ -74,13 +74,20 @@ class HelloPage(Page):
 
 格子图要读 cc-switch 的数据库，所以必须在装了 cc-switch 的那台 Mac 上跑。只有 `quota` 页面的话放服务器上就行。
 
-**macOS（launchd）**：`deploy/tech.mindreset.quota-dot.plist` 里路径已经填好了。
+**macOS（launchd）**：运行安装脚本。它会把 `deploy/tech.mindreset.quota-dot.plist` 模板里的占位符换成当前仓库目录和 `PATH` 里的 `python3`，写到 `~/Library/LaunchAgents/`，然后启动服务。登录后自动运行，进程退出会自动重启。
 
 ```bash
-cp deploy/tech.mindreset.quota-dot.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/tech.mindreset.quota-dot.plist
+./deploy/install-launchd.sh
+```
+
+```bash
 tail -f /tmp/quota-dot.log
 ```
+
+- 想用别的 Python，指定 `PYTHON=/path/to/python3 ./deploy/install-launchd.sh`。
+- 移动了仓库目录或换了 Python，重跑一次脚本即可，它会先卸载旧的再装新的。
+- 卸载：`./deploy/install-launchd.sh --uninstall`。
+- 仓库里的 plist 只是模板，不要手改占位符；你的真实路径只会出现在 `~/Library/LaunchAgents/` 里。
 
 Mac 休眠时不会推送，唤醒后会继续。
 

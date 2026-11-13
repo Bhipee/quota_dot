@@ -7,9 +7,11 @@
 
 屏幕是 296×152、只有黑白两色，深浅用点阵模拟。
 
+![Dot. App 中的显示效果](docs/screenshots/device.jpg)
+
 ## 效果
 
-下面的截图用示例数据生成，放大 2 倍（`python3 scripts/make_screenshots.py` 重新生成）。
+上图是 overview 页面推送后，在 Dot. App 里看到的设备预览。下面三张是各个页面的渲染图，用示例数据生成，放大 2 倍（`python3 scripts/make_screenshots.py` 重新生成）。
 
 **overview**：顶部是今天、近 7 天、近 10 周的 token 合计；左边每个额度一行，右边是最近几周的每日用量。
 
@@ -48,7 +50,13 @@ python -m quotadot run      # 常驻，每个页面按自己的间隔推送
 
 推送前，在 Dot. App 的「内容工坊」里给设备的循环列表加「图片 API」项，每个页面一个。用多个页面时，把各项的 key 填到 `PAGE_<页面名>_TASK_KEY`，否则它们会推到同一项，互相覆盖。
 
-格子图读的是本机的 cc-switch 数据库，所以要在装了 cc-switch 的 Mac 上跑。常驻运行可以用 `deploy/` 里的 launchd 配置。只推额度的话，也可以用 Docker 部署到服务器上。
+格子图读的是本机的 cc-switch 数据库，所以要在装了 cc-switch 的 Mac 上跑。在 Mac 上常驻运行（登录后自动启动），用这条命令安装：
+
+```bash
+./deploy/install-launchd.sh
+```
+
+只推额度的话，也可以用 Docker 部署到服务器上，见 [docs/configuration.md](docs/configuration.md)。
 
 ## 修改
 
