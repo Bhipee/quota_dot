@@ -1,106 +1,79 @@
 # quota-dot
 
-把 Codex 额度、中转站余额（Nexus、公司 LiteLLM）和 cc-switch 每日用量画成 296×152 的黑白图，通过 Dot. 图片 API 推到 Quote/0。
+把 AI 编程工具的额度和用量画成黑白图，定时推到 [Dot. Quote/0](https://dot.mindreset.tech) 墨水屏上。
 
-功能都是插件：**数据源**（`quotadot/sources/`）负责取数，**页面**（`quotadot/pages/`）负责画一屏。用 `PAGES` 选择要推哪些页面，每个页面推到设备列表里自己的那个「图片 API」项。
+- **额度**：Codex 剩余额度、中转站余额（Nexus、公司 LiteLLM 团队）
+- **用量**：本机 [cc-switch](https://github.com/farion1231/cc-switch) 记录的每日 token 用量，画成 GitHub 式格子图
 
-## 快速开始
+屏幕是 296×152、只有黑白两色，深浅用点阵模拟。
+
+## 效果
+
+下面的截图用示例数据生成，放大 2 倍（`python3 scripts/make_screenshots.py` 重新生成）。
+
+**overview**：顶部是今天、近 7 天、近 10 周的 token 合计；左边每个额度一行，右边是最近几周的每日用量。
+
+![overview](docs/screenshots/overview.png)
+
+**heatmap**：近 24 周的每日用量格子图。
+
+![heatmap](docs/screenshots/heatmap.png)
+
+**quota**：只看额度，左边 Codex，右边中转站。
+
+![quota](docs/screenshots/quota.png)
+
+## 运行
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env               # 填 DOT_*、要用的数据源；用不到的整组删掉
-python -m quotadot list            # 看有哪些数据源和页面、在这台机器上能不能用
-python -m quotadot render          # 只出图到 out/，不推送
-python -m quotadot push            # 出图并推送一次
-python -m quotadot run             # 常驻，每个页面按自己的间隔推送
+cp .env.example .env        # 填 Dot. API Key、设备序列号，以及要用的数据源
 ```
-
-`.env` 会自动加载（`--env-file` 可换路径），已经存在的环境变量优先，不会被覆盖。
-
-## 页面
-
-| 页面 | 内容 | 需要的数据源 | 默认间隔 |
-| --- | --- | --- | --- |
-| `quota` | 左栏 Codex 剩余额度，右栏中转站余额（一个显示大字，多个显示列表） | `codex`（`relays` 可选） | 900 秒 |
-| `heatmap` | GitHub 式每日用量格子图，24 周，4 档点阵深浅 | `ccswitch` | 3600 秒 |
-| `overview` | 顶部同 heatmap 的 TOKENS 标题和 today / 7d / 区间合计；左边每个额度一行（Codex、各中转站），右边最近几周的格子图（`PAGE_OVERVIEW_WEEKS`，默认 10，4–13） | `ccswitch`（`codex`、`relays` 可选） | 900 秒 |
-
-每个页面的设置都用 `PAGE_<名字>_<项>`：
-
-- `TASK_KEY`：推到哪个「图片 API」项。**多个页面必须各配一个**，否则会互相覆盖。key 从 `GET /api/authV2/open/device/{id}/loop/list` 返回里 `IMAGE_API` 那几项取。
-- `INTERVAL`：推送间隔（秒，最少 60）。
-- `ALIAS`：在 Dot. App 列表里显示的名字。
-- `TASK_TYPE`：`loop` 或 `fixed`，默认取 `DOT_TASK_TYPE`。
-- 页面自己的选项，比如 `PAGE_HEATMAP_METRIC=tokens|fresh|cost`、`PAGE_HEATMAP_WEEKS`。
-
-不设 `PAGES` 时，自动启用「数据源在这台机器上可用」的页面。比如服务器上没有 cc-switch 数据库，`heatmap` 会自动跳过。如果在 `PAGES` 里明确写了某个页面但数据源不可用，它照样推送，图上显示原因。
-
-## 数据源
-
-| 数据源 | 取数方式 | 配置 |
-| --- | --- | --- |
-| `codex` | `GET chatgpt.com/backend-api/wham/usage`，token 取自 `~/.codex/auth.json`，快过期或 401 时用 `refresh_token` 自动续期并写回 | `CODEX_AUTH_PATH` |
-| `relays` | 每个中转站一个 `type`：<br>`nexus`：`GET {base}/v1/usage`，读 `quota.limit/used/remaining`，需带浏览器 UA<br>`litellm`（公司 API）：`GET {base}/team/info?team_id=`，取 `team_memberships` 里你的 `spend` 和 `max_budget`；没有 `spend` 时改为累加 `keys` 里属于你的 key | `NEXUS_*`、`COMPANY_*`，或 `RELAYS` JSON（覆盖前两组，`.env` 里用单引号包住） |
-| `ccswitch` | 只读 `~/.cc-switch/cc-switch.db`：近一个月取明细表 `proxy_request_logs`，更早的取 `usage_daily_rollups`。Codex 等的输入 token 本身含缓存，按 cc-switch 的规则扣掉，避免重复 | `CCSWITCH_DB` |
-
-## 加一个新功能
-
-**新页面**：在 `quotadot/pages/` 放一个文件，重启就生效，不用改别处。
-
-```python
-from ..draw import canvas, font, footer, to_1bit
-from ..registry import Page, page
-
-@page
-class HelloPage(Page):
-    name = "hello"                  # PAGES=...,hello；设置走 PAGE_HELLO_*
-    requires = ("codex",)           # 缺这些数据源时自动跳过
-    default_interval = 1800
-
-    def render(self, data, now):
-        img, d = canvas()
-        d.text((8, 8), f"plan: {data['codex'].plan}", font=font(13, True), fill=0)
-        footer(d, now)
-        return to_1bit(img)
-```
-
-**新数据源**：在 `quotadot/sources/` 放一个文件，继承 `Source`，用 `@source` 注册，实现 `fetch()`。如果数据源在某些机器上用不了，实现 `unavailable()` 返回原因。远端请求失败时把错误放进返回结果，别直接抛异常，这样图上能显示出错原因。
-
-**新中转站类型**：在 `sources/relays.py` 里写一个函数，用 `@relay_type("名字", 必填字段...)` 注册，返回 `RelayReading`。
-
-画图工具都在 `quotadot/draw.py`：字体、进度条、文字截断和换行、底栏、错误块、数字格式化。几个页面共用的组件（TOKENS 标题栏、格子图、紧凑的额度行）在 `quotadot/widgets.py`，组合新页面时可以直接用。屏幕只有黑白两色，深浅用点阵模拟，可参考 `pages/heatmap.py`。
-
-## 部署
-
-格子图要读 cc-switch 的数据库，所以必须在装了 cc-switch 的那台 Mac 上跑。只有 `quota` 页面的话放服务器上就行。
-
-**macOS（launchd）**：`deploy/tech.mindreset.quota-dot.plist` 里路径已经填好了。
 
 ```bash
-cp deploy/tech.mindreset.quota-dot.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/tech.mindreset.quota-dot.plist
-tail -f /tmp/quota-dot.log
+python -m quotadot list     # 看有哪些数据源和页面、这台机器上能不能用
 ```
-
-Mac 休眠时不会推送，唤醒后会继续。
-
-**Docker（服务器）**
 
 ```bash
-mkdir -p data/codex && cp ~/.codex/auth.json data/codex/ && chown -R 1000:1000 data
-docker compose up -d --build && docker compose logs -f
+python -m quotadot render   # 只出图到 out/，不推送，用来预览
 ```
 
-**systemd**：见 `deploy/quota-dot.service`。也可以不常驻，用 cron 定时跑 `python -m quotadot push`。
+```bash
+python -m quotadot push     # 出图并推送一次
+```
 
-## 推送前的准备
+```bash
+python -m quotadot run      # 常驻，每个页面按自己的间隔推送
+```
 
-1. Dot. App →「内容工坊」，按页面数量在循环列表里添加「图片 API」项。
-2. Dot. App →「更多」→「API Key」创建密钥，填到 `DOT_API_KEY`；设备序列号填到 `DOT_DEVICE_ID`。
-3. 用上面的 `loop/list` 查询拿到每个「图片 API」项的 `key`，分别填到 `PAGE_QUOTA_TASK_KEY` 和 `PAGE_HEATMAP_TASK_KEY`。
+推送前，在 Dot. App 的「内容工坊」里给设备的循环列表加「图片 API」项，每个页面一个。用多个页面时，把各项的 key 填到 `PAGE_<页面名>_TASK_KEY`，否则它们会推到同一项，互相覆盖。
 
-## 注意
+格子图读的是本机的 cc-switch 数据库，所以要在装了 cc-switch 的 Mac 上跑。常驻运行可以用 `deploy/` 里的 launchd 配置。只推额度的话，也可以用 Docker 部署到服务器上。
 
-- 刷新 Codex token 会换掉 refresh_token。如果本机 Codex CLI 和服务器共用同一个 auth.json，一方刷新后另一方会掉线，服务器最好单独登录一份。
-- 固定列表（`fixed`）里的内容要等 App 里设好的时间点才刷新，`refreshNow` 对它不起作用。
-- 墨水屏每次刷新都耗电，间隔别设得太短。
+## 修改
+
+所有设置都在 `.env` 里，不用改代码：
+
+| 想改什么 | 改哪里 |
+| --- | --- |
+| 推哪些页面 | `PAGES=overview,heatmap` |
+| 推送间隔 | `PAGE_<页面名>_INTERVAL`，单位秒 |
+| overview 显示几周 | `PAGE_OVERVIEW_WEEKS`，4 到 13 |
+| 格子按什么统计 | `PAGE_<页面名>_METRIC=tokens`（含缓存）、`fresh`（只算输入加输出）或 `cost`（花费） |
+| 中转站 | `NEXUS_*`、`COMPANY_*`，或者用 `RELAYS` 写一个 JSON 列表 |
+
+要加新功能，就往插件目录放一个文件，别的地方都不用改：
+
+```
+quotadot/
+  sources/   数据源：codex.py  relays.py  ccswitch.py
+  pages/     页面：overview.py  heatmap.py  quota.py
+  widgets.py 页面共用的组件：TOKENS 标题、格子图、额度行
+  draw.py    画图工具：字体、进度条、文字截断、底栏
+```
+
+- **新页面**：在 `pages/` 里写一个继承 `Page` 的类，加上 `@page`，实现 `render()`。
+- **新数据源**：在 `sources/` 里写一个继承 `Source` 的类，加上 `@source`，实现 `fetch()`。
+- **新的中转站类型**：在 `sources/relays.py` 里写一个函数，加上 `@relay_type`。
+
+完整的配置项、每个数据源的取数方式、新页面的示例代码和部署步骤，见 [docs/configuration.md](docs/configuration.md)。

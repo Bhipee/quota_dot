@@ -9,9 +9,11 @@ data/
 auth.json
 *.tmp
 
-# Rendered pages and design drafts (they show real usage numbers)
+# Rendered pages (python -m quotadot render / run --out)
 out/
-*.png
+
+# Local drafts and previews with real usage numbers
+dev/
 
 # Python
 __pycache__/
