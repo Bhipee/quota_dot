@@ -56,6 +56,12 @@ python -m quotadot run      # 常驻，每个页面按自己的间隔推送
 ./deploy/install-launchd.sh
 ```
 
+服务只在启动时读取一次 `.env`，改了 `.env` 要重启服务才会生效：
+
+```bash
+launchctl kickstart -k gui/$(id -u)/tech.mindreset.quota-dot
+```
+
 只推额度的话，也可以用 Docker 部署到服务器上，见 [docs/configuration.md](docs/configuration.md)。
 
 ## 修改

@@ -15,7 +15,7 @@ python -m quotadot push            # 出图并推送一次
 python -m quotadot run             # 常驻，每个页面按自己的间隔推送
 ```
 
-`.env` 会自动加载（`--env-file` 可换路径），已经存在的环境变量优先，不会被覆盖。
+`.env` 会自动加载（`--env-file` 可换路径），已经存在的环境变量优先，不会被覆盖。`push`、`render` 每次运行都会重新读取；`run` 只在启动时读一次，改了 `.env` 要重启才生效。另外，同一个终端里之前用 `set -a; . ./.env` 导入过的变量会盖住 `.env` 里的新值，换个新终端运行即可。
 
 ## 页面
 
@@ -84,6 +84,7 @@ class HelloPage(Page):
 tail -f /tmp/quota-dot.log
 ```
 
+- 改了 `.env` 之后重启服务：`launchctl kickstart -k gui/$(id -u)/tech.mindreset.quota-dot`，然后在日志里看 `running ...` 那一行，确认启用的页面和间隔。
 - 想用别的 Python，指定 `PYTHON=/path/to/python3 ./deploy/install-launchd.sh`。
 - 移动了仓库目录或换了 Python，重跑一次脚本即可，它会先卸载旧的再装新的。
 - 卸载：`./deploy/install-launchd.sh --uninstall`。
@@ -98,7 +99,9 @@ mkdir -p data/codex && cp ~/.codex/auth.json data/codex/ && chown -R 1000:1000 d
 docker compose up -d --build && docker compose logs -f
 ```
 
-**systemd**：见 `deploy/quota-dot.service`。也可以不常驻，用 cron 定时跑 `python -m quotadot push`。
+改了 `.env` 后运行 `docker compose up -d`。注意 `docker compose restart` **不会**重新读取 `env_file`，必须用 `up -d` 重建容器。
+
+**systemd**：见 `deploy/quota-dot.service`。改了 `.env` 后运行 `sudo systemctl restart quota-dot`。也可以不常驻，用 cron 定时跑 `python -m quotadot push`，每次都会读到最新的 `.env`。
 
 ## 推送前的准备
 
